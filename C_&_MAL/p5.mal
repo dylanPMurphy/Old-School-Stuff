@@ -1,0 +1,270 @@
+#Dylan Murphy
+#Project 5
+#WED_0415 		
+ 		
+ 		
+ 		.data
+buffer:		.byte 		0:80
+ints:		.word		0:40
+ints1:		.word		0:40
+prompt:  	.asciiz 	"Type some numbers: "
+ELM:		.asciiz		"The line is empty"
+size_mess:	.asciiz		"The number of ints you entered is: "
+max_int:	.asciiz		"The maximum integer entered : "
+newline:    	.asciiz   	"\n"
+max1s:		.asciiz		"The maximum number of 1's in binary:"
+maxmess:	.asciiz		"Integers of maximum number of 1's:"
+         	          	 .text
+          	.globl   main
+
+#Prompt user for character.
+main:     	li       	$v0, 4        #Command for print string.
+          	la       	$a0, prompt   #Start addr. of prompt string.
+         	syscall
+         	
+         	li 		$v0, 8	      #Command for read string
+         	la		$a0, buffer   #store string in buffer
+         	li 		$a1, 80
+         	syscall
+         	
+         	la 		$s0, buffer
+    		jal		EL_CK		#call the EL_CK subroutine
+    		
+    		
+         	la 		$s0, buffer
+         	jal		int_bld
+         	jal		clearReg
+         	jal		size
+		jal		clearReg
+		jal		getmax
+		jal		clearReg
+		jal		get_one
+		jal		clearReg
+		jal		getmax1
+		jal		clearReg
+		jal		getint
+         	#END OF PROGRAM
+         	li		$v0, 10
+		syscall
+
+clearReg:	move 		$t0, $0		#Love me some clean registers!
+		move		$t1, $0
+		move		$t2, $0
+		move 		$t3, $0
+		move 		$t4, $0
+		move 		$t5, $0
+		move		$t6, $0
+		move		$t7, $0
+		move		$t8, $0
+		move		$t9, $0
+		jr		$31
+		
+
+EL_CK:				#Empty Line Check
+		lbu		$t1, ($s0)
+		beq		$t1, 0, end_program_EL
+		
+		addi		$s0, $s0, 1
+		bgt 		$t1, 57, EL_CK # if char is greater than the acsii value of 0-9
+		blt 		$t1, 48, EL_CK # if char is lesser than the acsii value of 0-9
+		jr		$31 # return to main
+		
+int_bld:	
+		j		step1
+step0:		addi		$s0, $s0, 1	# increment pointer
+step1:		lb		$t1, ($s0)	# $t1 is C
+		
+		beqz		$t1, step19	 # if Cis the end of the line
+		bgt 		$t1, 57, step0 # if char is greater than the acsii value of 0-9
+		blt 		$t1, 48, step0 # if char is lesser than the acsii value of 0-9
+		
+		li		$t2, 0 		# set $t2/E = 0
+step5:		sub		$t1, $t1, 48	# C=C-48 to get real value
+		addi		$t2, $t2, 1
+		
+		addi		$sp, $sp, -4	# offset stack pointer by 4 bytes to store int
+		sw		$t1, 0($sp)	# pushes C to the stack
+		
+		addi		$s0, $s0, 1	# increment pointer
+		lbu		$t1, ($s0)	# load next char
+		
+		bgt 		$t1, 57, step10 # if char is greater than the acsii value of 0-9
+		blt 		$t1, 48, step10 # if char is lesser than the acsii value of 0-9
+		j		step5		# if char is a digit goto step5 for the rest of the number
+		
+step10:		li		$t0, 0		# $t0 = sum	
+		li		$t3, 1		# $t3 = P
+		li		$t4, 10		# $t4 = R
+step11:		beqz 		$t2, step17	
+		sub		$t2, $t2, 1	# E = E - 1
+		
+		lw		$t5, 0($sp) 	# $t5 = D load int from stack
+		addi		$sp, $sp, 4	#pop stack
+		
+		mult		$t3, $t5
+		mflo		$t5
+		add		$t0, $t0, $t5
+		mult		$t3, $t4
+		mflo		$t3
+		j		step11
+		
+step17:						
+		la		$s2, ints	# $s2 = array address
+		add		$s2, $s2, $s1
+		addi		$s1, $s1, 4
+		sw		$t0, ($s2)	#store int in ints array
+		j		step1
+				
+step19:		li		$t8, -1
+		add		$s2, $s2, 4
+		sw		$t8,($s2)
+		jr		$31
+#END of int_build
+
+size:		li		$s1, 0		# $s1 = index counter
+		li		$t0, -1		
+		la		$s2, ints	# $s2 = array address
+		
+		
+loopi:		lw		$t1, ($s2)	#store temporary value for current index value
+		bltz		$t1, end_loopi	
+		addi		$s2,$s2,4	#increments array pointer	
+		addi		$s1, $s1, 1	#increments counter
+		j 		loopi		
+end_loopi:
+		#--Printing instructions--
+		li		$v0, 4
+		la		$a0, size_mess
+		syscall
+		li		$v0, 1
+		move		$a0, $s1
+		syscall
+		la      	$a0, newline    #Output "\n".
+            	li      	$v0, 4
+            	syscall
+		jr		$31
+
+getmax:		la		$s2, ints
+		lw		$t1, ($s2)		#t1 is element of int array
+		beq		$s1, 1, end_loopmax
+		li		$t2, -1
+loopmax:	addi		$s2, $s2, 4
+		bltz		$t3, end_loopmax
+		lw		$t3, ($s2)
+		bge		$t1, $t3, loopmax
+		move		$t1, $t3
+		b		loopmax
+		
+end_loopmax:
+		la		$a0, max_int
+		li		$v0, 4
+		syscall
+		move		$a0, $t1
+		li		$v0, 1
+		syscall
+		la      	$a0, newline    #Output "\n".
+            	li      	$v0, 4
+            	syscall
+		jr		$31
+		
+#-------------------------BEGINGING of get_one-------------------------------#	This subroutine iterates through array	
+get_one:								     #	and counts how many binary 1's each element has
+		la 		$s0, ints	#$s0 is int array
+		la		$s3, ints1
+		
+		
+outer:		
+		li		$t4, -1		#end of loop
+		li		$t1, 0		#number of ones
+		lw		$t0, ($s0)	#array element
+		add		$s0, $s0, 4	#array iterator
+		bltz		$t0, end_outer	
+
+
+one_loop:	beqz		$t0, end_one_loop
+		andi		$t3, $t0, 1	#t3 = t0 & 1
+		srl		$t0,$t0,1
+		beq		$t3, 1, inc
+		j		one_loop
+end_one_loop:
+		
+		sw		$t1, ($s3) #adds to array
+		addi		$s3, $s3, 4
+		j		outer
+		
+inc:		addi 		$t1, $t1, 1 	#increment number of 1's
+		j one_loop
+end_outer:
+		addi		$s3, $s3, 4
+		addi		$t5,$t5, -1
+		sw		$t5, ($s3)
+		move 		$s2, $0
+		move 		$s4, $0
+		jr		$31
+#-------------------------End of get_one-------------------------------#		
+#-------------------------Beginging of getmax1-------------------------------#
+getmax1:	#This subroutine finds the integer with the most amount of 1's
+		la		$s2, ints1		#pointer to array of 1's
+		lw		$t1, ($s2)		#t1 is element of int array
+		beq		$s1, 1, end_loopmax1	#if theres only one number then its done
+		li		$t2, -1			
+loopmax1:	addi		$s2, $s2, 4		#loop though array of 1's to find max
+		bltz		$t3, end_loopmax1
+		lw		$t3, ($s2)
+		bge		$t1, $t3, loopmax1
+		move		$t1, $t3
+		b		loopmax1
+		
+end_loopmax1:	#prints results
+		la		$a0, max1s
+		li		$v0, 4
+		syscall
+		move		$a0, $t1
+		li		$v0, 1
+		syscall
+		la      	$a0, newline    #Output "\n".
+            	li      	$v0, 4
+            	syscall
+            	move		$s7, $t1
+		jr		$31
+#-------------------------End of getmax1-------------------------------#
+#-------------------------Begining of loopmax1-------------------------------#
+getint:		
+		la		$a0, maxmess
+		li		$v0, 4
+		syscall		
+		la		$s2, ints1
+		
+		la		$s3, ints
+		
+lastloop:	lw		$t2, ($s3)
+		lw		$t1, ($s2)
+		addi		$s2, $s2, 4
+		addi		$s3, $s3, 4
+		bltz		$t1, end
+		bltz		$t2, end
+		beq		$t1, $s7, print
+		
+		j		lastloop
+print:		
+		la      	$a0, newline    #Output "\n".
+            	li      	$v0, 4
+            	syscall
+		move		$a0, $t2
+		li		$v0, 1
+		syscall
+		
+		j 		lastloop
+		
+end:
+		jr		$31	
+		
+			
+#-------------------------End of getint-------------------------------#	
+end_program_EL:
+		li		$v0, 4
+		la		$a0, ELM
+		syscall
+		li		$v0, 10
+		syscall
+		
